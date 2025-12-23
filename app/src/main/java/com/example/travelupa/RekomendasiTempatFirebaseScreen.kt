@@ -132,9 +132,11 @@ fun RekomendasiTempatFirebaseScreen(
                     val gambarUrl = selectedImageUri?.let { firebaseService.uploadImage(it) }
 
                     val tempatBaru = TempatWisata(
+                        id = "",
                         nama = nama,
                         deskripsi = deskripsi,
-                        gambarUrl = gambarUrl
+                        gambarUrl = gambarUrl,
+                        gambarResId = null
                     )
 
                     firebaseService.addTempatWisata(tempatBaru)

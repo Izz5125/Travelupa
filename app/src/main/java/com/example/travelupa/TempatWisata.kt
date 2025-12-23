@@ -1,12 +1,13 @@
 package com.example.travelupa
 
-import com.google.firebase.firestore.IgnoreExtraProperties
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
-@IgnoreExtraProperties
+@Entity(tableName = "tempat_wisata")
 data class TempatWisata(
-    val id: String = "",
-    val nama: String = "",
-    val deskripsi: String = "",
-    val gambarUrl: String? = null,
-    val gambarResId: Int? = null
+    @PrimaryKey val id: String,
+    val nama: String,
+    val deskripsi: String,
+    val gambarUrl: String?,
+    val gambarResId: Int?
 )
