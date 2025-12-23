@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,7 +27,8 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun RekomendasiTempatFirebaseScreen(
-    firebaseService: FirebaseService = FirebaseService()
+    firebaseService: FirebaseService = FirebaseService(),
+    onBackToLogin: () -> Unit
 ) {
     var daftarTempatWisata by remember { mutableStateOf<List<TempatWisata>>(emptyList()) }
     var showTambahDialog by remember { mutableStateOf(false) }
@@ -65,9 +66,9 @@ fun RekomendasiTempatFirebaseScreen(
                 actions = {
                     IconButton(onClick = {
                         firebaseService.logout()
-                        // TODO: Navigasi kembali ke layar login
+                        onBackToLogin()
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
+                        Icon(Icons.Filled.ExitToApp, contentDescription = "Logout")
                     }
                 }
             )

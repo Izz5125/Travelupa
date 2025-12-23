@@ -61,7 +61,11 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.room.ktx)
+
+    // Room dependencies - Using latest stable version
+    implementation("androidx.room:room-ktx:2.8.4")
+    kapt("androidx.room:room-compiler:2.8.4")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -70,9 +74,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation("androidx.compose.ui:ui:1.10.0")
-    implementation("androidx.compose.material:material:1.10.0")
-    implementation("androidx.compose.ui:ui-tooling-preview:1.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.activity:activity-compose:1.12.2")
 
@@ -94,7 +95,10 @@ dependencies {
     // Coil untuk image loading
     implementation("io.coil-kt:coil-compose:2.5.0")
 
-    // Hilt
-    implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
+    // Hilt - Using stable versions
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    kapt("com.google.dagger:hilt-compiler:2.51.1")
+
+    // Navigation Compose - SESUAI MODUL HAL 38
+    implementation("androidx.navigation:navigation-compose:2.7.0") // Versi di modul
 }

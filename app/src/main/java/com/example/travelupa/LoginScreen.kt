@@ -25,10 +25,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
-// SESUAI MODUL HAL 25-27
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: () -> Unit,  // Untuk navigation setelah login berhasil
     onNavigateToRegister: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
@@ -38,8 +37,6 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-
-    // SESUAI MODUL: "val coroutineScope = rememberCoroutineScope()"
     val coroutineScope = rememberCoroutineScope()
 
     Column(
@@ -48,7 +45,6 @@ fun LoginScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        // SESUAI MODUL HAL 25: OutlinedTextField untuk email
         OutlinedTextField(
             value = email,
             onValueChange = {
@@ -56,13 +52,15 @@ fun LoginScreen(
                 errorMessage = null
             },
             label = { Text("Email") },
+            leadingIcon = {
+                Icon(Icons.Filled.Email, contentDescription = "Email")
+            },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // SESUAI MODUL HAL 25: OutlinedTextField untuk password
         OutlinedTextField(
             value = password,
             onValueChange = {
@@ -70,10 +68,9 @@ fun LoginScreen(
                 errorMessage = null
             },
             label = { Text("Password") },
-            visualTransformation = if (isPasswordVisible)
-                VisualTransformation.None
-            else
-                PasswordVisualTransformation(),
+            leadingIcon = {
+                Icon(Icons.Filled.Lock, contentDescription = "Password")
+            },
             trailingIcon = {
                 IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                     Icon(
@@ -88,13 +85,16 @@ fun LoginScreen(
                     )
                 }
             },
+            visualTransformation = if (isPasswordVisible)
+                VisualTransformation.None
+            else
+                PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // SESUAI MODUL HAL 25-26: Button dengan coroutineScope.launch
         Button(
             onClick = {
                 if (email.isEmpty() || password.isEmpty()) {
@@ -105,10 +105,8 @@ fun LoginScreen(
                 isLoading = true
                 errorMessage = null
 
-                // SESUAI PERSIS DENGAN MODUL HAL 26 dan 35
                 coroutineScope.launch {
                     try {
-                        // Firebase Authentication - SESUAI MODUL
                         val authResult = withContext(Dispatchers.IO) {
                             FirebaseAuth.getInstance()
                                 .signInWithEmailAndPassword(email, password)
@@ -116,6 +114,7 @@ fun LoginScreen(
                         }
 
                         isLoading = false
+                        // SESUAI MODUL: Panggil onLoginSuccess untuk navigation
                         onLoginSuccess()
 
                     } catch (e: Exception) {
@@ -137,23 +136,12 @@ fun LoginScreen(
             }
         }
 
-        // Error message - SESUAI MODUL
         errorMessage?.let {
             Text(
                 text = it,
                 color = Color.Red,
                 modifier = Modifier.padding(top = 8.dp)
             )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Tombol Register (tidak ada di modul, tapi tambahkan sebagai navigasi)
-        TextButton(
-            onClick = onNavigateToRegister,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Belum punya akun? Daftar")
         }
     }
 }

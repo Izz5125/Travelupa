@@ -1,6 +1,5 @@
 package com.example.travelupa
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,18 +12,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 fun AppNavigation(
     currentUser: FirebaseUser?,
     firestore: FirebaseFirestore,
+    onGalleryClicked: () -> Unit
 ) {
     val navController = rememberNavController()
 
-    val startDestination = if (currentUser != null) {
-        Screen.RekomendasiTempat.route
-    } else {
-        Screen.Greeting.route
-    }
-
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = if (currentUser != null) Screen.RekomendasiTempat.route else Screen.Greeting.route
     ) {
         composable(Screen.Greeting.route) {
             GreetingScreen(
@@ -43,7 +37,9 @@ fun AppNavigation(
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                onNavigateToRegister = { }
+                onNavigateToRegister = {
+                    // Untuk modul sederhana, skip register
+                }
             )
         }
 
@@ -52,18 +48,12 @@ fun AppNavigation(
                 firestore = firestore,
                 onBackToLogin = {
                     FirebaseAuth.getInstance().signOut()
-                    navController.navigate(Screen.Login.route) {
+                    navController.navigate(Screen.Greeting.route) {
                         popUpTo(Screen.RekomendasiTempat.route) { inclusive = true }
                     }
                 },
-                onGallerySelected = {
-                    navController.navigate("gallery")
-                }
+                onGallerySelected = onGalleryClicked
             )
-        }
-
-        composable("gallery") {
-            Text("Gallery Screen")
         }
     }
 }

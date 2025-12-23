@@ -8,24 +8,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.example.travelupa.ui.theme.TravelupaTheme
-import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private lateinit var firestore: FirebaseFirestore
+
+    @Inject
+    lateinit var firestore: FirebaseFirestore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize Firebase
-        FirebaseApp.initializeApp(this)
-
-        firestore = FirebaseFirestore.getInstance()
-
-        // Get current user - SESUAI MODUL HAL 36
-        val currentUser: FirebaseUser? = FirebaseAuth.getInstance().currentUser
+        val currentUser = FirebaseAuth.getInstance().currentUser
 
         setContent {
             TravelupaTheme {
@@ -33,7 +30,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color.White
                 ) {
-                    AppNavigation(currentUser, firestore)
+                    AppNavigation(
+                        currentUser = currentUser,
+                        firestore = firestore,
+                        onGalleryClicked = {
+                            // TODO: Implement gallery selection
+                        }
+                    )
                 }
             }
         }
