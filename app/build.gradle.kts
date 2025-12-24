@@ -106,4 +106,15 @@ dependencies {
     implementation("androidx.room:room-runtime:2.5.0")  // Versi di modul
     kapt("androidx.room:room-compiler:2.5.0")          // SESUAI MODUL: kapt("androidx.room:room-compiler:2.5.0")
     implementation("androidx.room:room-ktx:2.5.0")     // SESUAI MODUL: implementation("androidx.room:room-ktx:2.5.0")
+
+    // CameraX - SESUAI MODUL HAL 45
+    implementation("androidx.camera:camera-core:1.1.0")  // Versi di modul
+    implementation("androidx.camera:camera-camera2:1.1.0")
+    implementation("androidx.camera:camera-lifecycle:1.1.0")
+    implementation("androidx.camera:camera-view:1.0.0-alpha30")
+    implementation("androidx.camera:camera-extensions:1.0.0-alpha30")
+
+    // Guava
+    implementation("com.google.guava:guava:33.0.0-android")
+
 }

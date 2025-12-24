@@ -26,15 +26,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import androidx.compose.material.icons.filled.Image
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RekomendasiTempatScreen(
     firestore: FirebaseFirestore,
     storage: FirebaseStorage,
-    imageDao: ImageDao,  // Tambahkan ImageDao parameter
+    imageDao: ImageDao,
     onBackToLogin: () -> Unit,
-    onGallerySelected: () -> Unit
+    onGallerySelected: () -> Unit,
+    onCameraSelected: () -> Unit
 ) {
     var daftarTempatWisata by remember { mutableStateOf<List<TempatWisata>>(emptyList()) }
     var showTambahDialog by remember { mutableStateOf(false) }
@@ -71,11 +75,24 @@ fun RekomendasiTempatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Rekomendasi Tempat Wisata") },
                 actions = {
-                    IconButton(onClick = onBackToLogin) {
-                        Icon(Icons.Filled.ExitToApp, contentDescription = "Logout")
+                    // Tambahkan menu untuk camera dan gallery
+                    Row {
+                        IconButton(
+                            onClick = onCameraSelected
+                        ) {
+                            Icon(Icons.Filled.CameraAlt, contentDescription = "Camera")
+                        }
+                        IconButton(
+                            onClick = onGallerySelected
+                        ) {
+                            Icon(Icons.Filled.Image, contentDescription = "Gallery")
+                        }
+                        IconButton(onClick = onBackToLogin) {
+                            Icon(Icons.Filled.ExitToApp, contentDescription = "Logout")
+                        }
                     }
                 }
             )
@@ -152,34 +169,41 @@ fun RekomendasiTempatScreen(
 
                 // Jika ada gambar yang dipilih, upload ke Firestore dan simpan lokal
                 selectedImageUri?.let { uri ->
-                    DatabaseUtils.uploadImageToFirestore(
-                        firestore = firestore,
-                        context = context,
-                        imageUri = uri,
-                        tempatWisata = tempatBaru,
-                        onSuccess = { updatedTempat ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val imageFileName = "images/${UUID.randomUUID()}.jpg"
+                            val imageRef = storage.reference.child(imageFileName)
+
+                            imageRef.putFile(uri).await()
+                            val downloadUrl = imageRef.downloadUrl.await()
+
+                            val updatedTempat = tempatBaru.copy(gambarUrl = downloadUrl.toString())
+
+                            firestore.collection("tempat_wisata").add(updatedTempat).await()
+
                             // Refresh list
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val result = firestore.collection("tempat_wisata").get().await()
-                                val tempatList = result.documents.map { document ->
-                                    TempatWisata(
-                                        id = document.id,
-                                        nama = document.getString("nama") ?: "",
-                                        deskripsi = document.getString("deskripsi") ?: "",
-                                        gambarUrl = document.getString("gambarUrl")
-                                    )
-                                }
-                                daftarTempatWisata = tempatList
+                            val result = firestore.collection("tempat_wisata").get().await()
+                            val tempatList = result.documents.map { document ->
+                                TempatWisata(
+                                    id = document.id,
+                                    nama = document.getString("nama") ?: "",
+                                    deskripsi = document.getString("deskripsi") ?: "",
+                                    gambarUrl = document.getString("gambarUrl")
+                                )
                             }
-                            showTambahDialog = false
-                            selectedImageUri = null
-                        },
-                        onFailure = { e ->
-                            // Handle error
-                            showTambahDialog = false
-                            selectedImageUri = null
+                            withContext(Dispatchers.Main) {
+                                daftarTempatWisata = tempatList
+                                showTambahDialog = false
+                                selectedImageUri = null
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                // Handle error
+                                showTambahDialog = false
+                                selectedImageUri = null
+                            }
                         }
-                    )
+                    }
                 } ?: run {
                     // Jika tidak ada gambar, simpan langsung ke Firestore
                     CoroutineScope(Dispatchers.IO).launch {
