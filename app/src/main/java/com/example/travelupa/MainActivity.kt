@@ -4,25 +4,40 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.room.Room
 import com.example.travelupa.ui.theme.TravelupaTheme
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
+import com.google.firebase.storage.FirebaseStorage
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    @Inject
-    lateinit var firestore: FirebaseFirestore
+    private lateinit var firestore: FirebaseFirestore
+    private lateinit var storage: FirebaseStorage
+    private lateinit var imageDao: ImageDao  // SESUAI MODUL: deklarasikan ImageDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val currentUser = FirebaseAuth.getInstance().currentUser
+        FirebaseApp.initializeApp(this)
+
+        firestore = FirebaseFirestore.getInstance()
+        storage = FirebaseStorage.getInstance()
+
+        // SESUAI MODUL HAL 43: Buat database Room
+        val db = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java, "travelupa-database"  // SESUAI MODUL: "travelupa-database"
+        ).build()
+
+        imageDao = db.imageDao()  // SESUAI MODUL: Dapatkan imageDao dari database
+
+        val currentUser: FirebaseUser? = FirebaseAuth.getInstance().currentUser
 
         setContent {
             TravelupaTheme {
@@ -30,13 +45,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color.White
                 ) {
-                    AppNavigation(
-                        currentUser = currentUser,
-                        firestore = firestore,
-                        onGalleryClicked = {
-                            // TODO: Implement gallery selection
-                        }
-                    )
+                    AppNavigation(currentUser, firestore, storage, imageDao)  // Tambahkan imageDao
                 }
             }
         }

@@ -101,4 +101,9 @@ dependencies {
 
     // Navigation Compose - SESUAI MODUL HAL 38
     implementation("androidx.navigation:navigation-compose:2.7.0") // Versi di modul
+
+    // Room Database - SESUAI MODUL HAL 41
+    implementation("androidx.room:room-runtime:2.5.0")  // Versi di modul
+    kapt("androidx.room:room-compiler:2.5.0")          // SESUAI MODUL: kapt("androidx.room:room-compiler:2.5.0")
+    implementation("androidx.room:room-ktx:2.5.0")     // SESUAI MODUL: implementation("androidx.room:room-ktx:2.5.0")
 }

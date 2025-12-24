@@ -1,13 +1,12 @@
 package com.example.travelupa
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity(tableName = "tempat_wisata")
+// Update data class untuk support gambar dari URL dan Resource ID
 data class TempatWisata(
-    @PrimaryKey val id: String = "",
-    val nama: String = "",
-    val deskripsi: String = "",
-    val gambarUrl: String? = null,
-    val gambarResId: Int? = null
+    val id: String = "",  // Untuk Firestore document ID
+    val nama: String,
+    val deskripsi: String,
+    val gambarUrl: String? = null,      // Untuk Firebase Storage URL
+    val gambarResId: Int? = null,       // Untuk local resource ID
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )

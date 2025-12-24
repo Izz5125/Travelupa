@@ -1,61 +1,81 @@
 package com.example.travelupa
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RekomendasiTempatScreen(
-    onBackToLogin: () -> Unit  // Parameter untuk logout/navigation back
+    firestore: FirebaseFirestore,
+    storage: FirebaseStorage,
+    imageDao: ImageDao,  // Tambahkan ImageDao parameter
+    onBackToLogin: () -> Unit,
+    onGallerySelected: () -> Unit
 ) {
-    // State untuk daftar tempat wisata
-    var daftarTempatWisata by remember {
-        mutableStateOf(
-            listOf(
-                TempatWisata(
-                    nama = "Tumpak Sewu",
-                    deskripsi = "Air terjun tercantik di Jawa Timur.",
-                    gambarResId = R.drawable.tumpak_sewu
-                ),
-                TempatWisata(
-                    nama = "Gunung Bromo",
-                    deskripsi = "Matahari terbitnya bagus banget.",
-                    gambarResId = R.drawable.gunung_bromo
-                ),
-                TempatWisata(
-                    nama = "Kawah Ijen",
-                    deskripsi = "Blue fire yang menakjubkan.",
-                    gambarResId = R.drawable.kawah_ijen
-                )
-            )
-        )
+    var daftarTempatWisata by remember { mutableStateOf<List<TempatWisata>>(emptyList()) }
+    var showTambahDialog by remember { mutableStateOf(false) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val context = LocalContext.current
+
+    // Image picker launcher
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
     }
 
-    var showTambahDialog by remember { mutableStateOf(false) }
+    // Load data dari Firestore
+    LaunchedEffect(Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val result = firestore.collection("tempat_wisata").get().await()
+                val tempatList = result.documents.map { document ->
+                    TempatWisata(
+                        id = document.id,
+                        nama = document.getString("nama") ?: "",
+                        deskripsi = document.getString("deskripsi") ?: "",
+                        gambarUrl = document.getString("gambarUrl")
+                    )
+                }
+                daftarTempatWisata = tempatList
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Rekomendasi Tempat Wisata") },
                 actions = {
-                    // SESUAI MODUL: Tombol logout
-                    IconButton(
-                        onClick = onBackToLogin  // Panggil fungsi logout/navigation
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                    IconButton(onClick = onBackToLogin) {
+                        Icon(Icons.Filled.ExitToApp, contentDescription = "Logout")
                     }
                 }
             )
@@ -79,35 +99,116 @@ fun RekomendasiTempatScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(daftarTempatWisata) { tempat ->
-                TempatItemEditable(
+                TempatItemDatabase(
                     tempat = tempat,
                     onDelete = {
-                        daftarTempatWisata = daftarTempatWisata.filter { it != tempat }
+                        CoroutineScope(Dispatchers.IO).launch {
+                            // Hapus dari Firestore
+                            firestore.collection("tempat_wisata")
+                                .document(tempat.id)
+                                .delete()
+                                .await()
+
+                            // Hapus dari local database jika ada gambar
+                            tempat.gambarUrl?.let { imageUrl ->
+                                val imageEntity = imageDao.getImageByTempatWisataId(tempat.id)
+                                imageEntity?.let { imageDao.delete(it) }
+                            }
+
+                            // Refresh list
+                            val result = firestore.collection("tempat_wisata").get().await()
+                            val tempatList = result.documents.map { document ->
+                                TempatWisata(
+                                    id = document.id,
+                                    nama = document.getString("nama") ?: "",
+                                    deskripsi = document.getString("deskripsi") ?: "",
+                                    gambarUrl = document.getString("gambarUrl")
+                                )
+                            }
+                            daftarTempatWisata = tempatList
+                        }
                     }
                 )
             }
         }
     }
 
-    // Dialog untuk menambah data
+    // Dialog untuk menambah data dengan Room Database
     if (showTambahDialog) {
-        TambahTempatDialog(
-            onDismiss = { showTambahDialog = false },
+        TambahTempatDatabaseDialog(
+            selectedImageUri = selectedImageUri,
+            onDismiss = {
+                showTambahDialog = false
+                selectedImageUri = null
+            },
+            onPickImage = {
+                imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
             onTambah = { nama, deskripsi ->
                 val tempatBaru = TempatWisata(
                     nama = nama,
-                    deskripsi = deskripsi,
-                    gambarResId = null
+                    deskripsi = deskripsi
                 )
-                daftarTempatWisata = daftarTempatWisata + tempatBaru
-                showTambahDialog = false
+
+                // Jika ada gambar yang dipilih, upload ke Firestore dan simpan lokal
+                selectedImageUri?.let { uri ->
+                    DatabaseUtils.uploadImageToFirestore(
+                        firestore = firestore,
+                        context = context,
+                        imageUri = uri,
+                        tempatWisata = tempatBaru,
+                        onSuccess = { updatedTempat ->
+                            // Refresh list
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val result = firestore.collection("tempat_wisata").get().await()
+                                val tempatList = result.documents.map { document ->
+                                    TempatWisata(
+                                        id = document.id,
+                                        nama = document.getString("nama") ?: "",
+                                        deskripsi = document.getString("deskripsi") ?: "",
+                                        gambarUrl = document.getString("gambarUrl")
+                                    )
+                                }
+                                daftarTempatWisata = tempatList
+                            }
+                            showTambahDialog = false
+                            selectedImageUri = null
+                        },
+                        onFailure = { e ->
+                            // Handle error
+                            showTambahDialog = false
+                            selectedImageUri = null
+                        }
+                    )
+                } ?: run {
+                    // Jika tidak ada gambar, simpan langsung ke Firestore
+                    CoroutineScope(Dispatchers.IO).launch {
+                        firestore.collection("tempat_wisata")
+                            .add(tempatBaru)
+                            .await()
+
+                        // Refresh list
+                        val result = firestore.collection("tempat_wisata").get().await()
+                        val tempatList = result.documents.map { document ->
+                            TempatWisata(
+                                id = document.id,
+                                nama = document.getString("nama") ?: "",
+                                deskripsi = document.getString("deskripsi") ?: "",
+                                gambarUrl = document.getString("gambarUrl")
+                            )
+                        }
+                        daftarTempatWisata = tempatList
+
+                        showTambahDialog = false
+                    }
+                }
             }
         )
     }
 }
 
 @Composable
-fun TempatItemEditable(
+fun TempatItemDatabase(
     tempat: TempatWisata,
     onDelete: () -> Unit
 ) {
@@ -117,9 +218,19 @@ fun TempatItemEditable(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            tempat.gambarResId?.let {
+            // Tampilkan gambar dari URL jika ada, atau gambar default
+            if (tempat.gambarUrl != null) {
                 Image(
-                    painter = painterResource(id = it),
+                    painter = rememberAsyncImagePainter(model = tempat.gambarUrl),
+                    contentDescription = tempat.nama,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.default_image),
                     contentDescription = tempat.nama,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -127,6 +238,7 @@ fun TempatItemEditable(
                     contentScale = ContentScale.Crop
                 )
             }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -159,8 +271,10 @@ fun TempatItemEditable(
 }
 
 @Composable
-fun TambahTempatDialog(
+fun TambahTempatDatabaseDialog(
+    selectedImageUri: Uri?,
     onDismiss: () -> Unit,
+    onPickImage: () -> Unit,
     onTambah: (String, String) -> Unit
 ) {
     var nama by remember { mutableStateOf("") }
@@ -171,18 +285,51 @@ fun TambahTempatDialog(
         title = { Text("Tambah Tempat Wisata Baru") },
         text = {
             Column {
+                // Preview gambar yang dipilih
+                selectedImageUri?.let { uri ->
+                    Image(
+                        painter = rememberAsyncImagePainter(model = uri),
+                        contentDescription = "Selected Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .padding(bottom = 8.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                // Tombol pilih gambar
+                Button(
+                    onClick = onPickImage,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(Icons.Filled.Image, contentDescription = "Pick Image", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Pilih Gambar")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Form input
                 OutlinedTextField(
                     value = nama,
                     onValueChange = { nama = it },
                     label = { Text("Nama Tempat") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = deskripsi,
                     onValueChange = { deskripsi = it },
                     label = { Text("Deskripsi") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
                 )
             }
         },
@@ -192,7 +339,8 @@ fun TambahTempatDialog(
                     if (nama.isNotBlank() && deskripsi.isNotBlank()) {
                         onTambah(nama, deskripsi)
                     }
-                }
+                },
+                enabled = nama.isNotBlank() && deskripsi.isNotBlank()
             ) {
                 Text("Tambah")
             }
